@@ -11,14 +11,27 @@ long[] fastSort(long[] r) {
     import std.array : join;
     import std.algorithm : fold, map;
     import core.bitop : bsr;
+    import core.stdc.stdlib : calloc, free;
 
-    long min, max;
-    AliasSeq!(min, max) = r.fold!(std.algorithm.min, std.algorithm.max);
+    import std.stdio : writeln;
 
-    long k = lround(double(max - min + 1) / r.length);
-    import std.stdio;
+    long min = r[0];
+    long max = r[0];
+    foreach (el; r[1 .. $]) {
+        if (el < min)
+            min = el;
+        if (el > max)
+            max = el;
+    }
+
+    //AliasSeq!(min, max) = r.fold!(std.algorithm.min, std.algorithm.max);
+
+    auto targetNumPerBin = 64;
+    long k = targetNumPerBin * lround(double(max - min + 1) / r.length);
     auto shift = bsr(k);
     alias b = x => (x - min) >> shift;
+    auto nBins = b(max) + 1;
+    //writeln(nBins);
 
     version (Prof) {
         import std.datetime.stopwatch : StopWatch;
@@ -26,22 +39,30 @@ long[] fastSort(long[] r) {
         StopWatch sw;
         sw.start();
     }
-    auto buff = new ubyte[](long[].sizeof * r.length + 4 * long.sizeof * r.length);
-    auto sectionsRaw = cast(RawSlice[]) buff[0 .. long[].sizeof * r.length];
-    buff = buff[long[].sizeof * r.length .. $];
-    foreach (i; ref section; sectionsRaw) {
-        section.ptr = buff.ptr + i * 4 * long.sizeof;
-        section.length = 0;
+    enum maxSectionSize = 128;
+    auto nBytesInHeader = (long[]).sizeof * nBins;
+    auto buffLen = nBytesInHeader + maxSectionSize * long.sizeof * nBins;
+    version (calloc) {
+        auto p = calloc(buffLen, 1);
+        scope (exit)
+            free(p);
+        auto buff = (cast(ubyte*) p)[0 .. buffLen];
+    }
+    else
+        auto buff = new ubyte[](buffLen);
+    auto sectionsRaw = cast(RawSlice[]) buff[0 .. nBytesInHeader];
+    buff = buff[nBytesInHeader .. $];
+    foreach (i, ref section; sectionsRaw) {
+        section.ptr = buff.ptr + i * maxSectionSize * long.sizeof;
+        //section.length = 0;
     }
     auto sections = cast(long[][]) sectionsRaw;
-    version (Prof) {
-        sw.stop();
-        sw.peek.writeln(" ", __LINE__);
-        sw.reset();
-        sw.start();
-    }
-    foreach (ref sec; sections)
-        sec.length = 0;
+    alias insert = (i, x) {
+        auto arr = &sectionsRaw[i];
+        if (arr.length == maxSectionSize)
+            assert(0);
+        (cast(long*) arr.ptr)[arr.length++] = x;
+    };
 
     version (Prof) {
         sw.stop();
@@ -51,7 +72,7 @@ long[] fastSort(long[] r) {
     }
 
     foreach (x; r)
-        sections[b(x)] ~= x;
+        insert(b(x), x);
 
     version (Prof) {
         sw.stop();
@@ -60,7 +81,21 @@ long[] fastSort(long[] r) {
         sw.start();
     }
 
-    auto ret = sections.map!(std.algorithm.sort).join;
+    //writeln(sections);
+
+    auto rp = r.ptr;
+    foreach (section; sections) {
+        rp[0 .. section.length] = std.algorithm.sort(section).release;
+        rp += section.length;
+    }
+    auto ret = r;
+    /+
+    long[] ret;
+    if (k == 1)
+        ret = sections.join;
+    else
+        ret = sections.map!(std.algorithm.sort).join;
+        +/
 
     version (Prof) {
         sw.stop();
@@ -93,13 +128,14 @@ void main(string[] args) {
 
 	foreach (i; 0 .. NR) {
     	auto data = iota(args[1].to!size_t).map!(i => uniform(0L, args[1].to!long)).array;
+    	auto orig = data.dup;
     	GC.disable;
     	sw.start();
     	data = fastSort(data);
         sw.stop();
         GC.enable;
         GC.collect();
-        enforce(data.isSorted);
+        enforce(data.isSorted && data == orig.phobosSort);
 	}
 
     writeln(sw.peek);
@@ -111,7 +147,6 @@ void main(string[] args) {
     	sw.start();
     	data = phobosSort(data);
         sw.stop();
-        enforce(data.isSorted);
 	}
 
     writeln(sw.peek);
