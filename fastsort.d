@@ -10,7 +10,7 @@ int[] binnedCountingSort(int[] r) {
     int min, max;
     AliasSeq!(min, max) = minMax(r);
 
-    enum targetNumPerBin = 64;
+    enum targetNumPerBin = 16;
     immutable k = targetNumPerBin * lround(double(max - min + 1) / r.length);
     immutable shift = bsr(k);
     alias b = (int x) => size_t(x - min) >> shift;
@@ -78,7 +78,7 @@ void main(string[] args) {
     import std.random : uniform;
     import std.datetime.stopwatch : StopWatch;
     import std.algorithm : map, isSorted;
-    import std.range : iota;
+    import std.range : iota, retro;
     import std.array : array;
     import std.conv : to;
     import std.exception : enforce;
@@ -89,7 +89,18 @@ void main(string[] args) {
 
     immutable len = args[1].to!size_t;
 
-    alias getData = () => iota(len).map!(i => uniform(int(0), len.to!int / 100)^^2).array;
+    version (Uniform)
+        alias getData = () => iota(len).map!(i => uniform(int(0), len.to!int / 100)).array;
+    version (Squared)
+        alias getData = () => iota(len).map!(i => uniform(int(0), len.to!int / 100)^^2).array;
+    version (Forward)
+        alias getData = () => iota(len).map!(i => i.to!int).array;
+    version (Reverse)
+        alias getData = () => iota(len).map!(i => i.to!int).retro.array;
+    version (Comb)
+        alias getData = () => iota(len).map!(i => (i + ((i & 1) ? len / 2 : 0)).to!int).array;
+    version (ReverseComb)
+        alias getData = () => iota(len).map!(i => (i + ((i & 1) ? len / 2 : 0)).to!int).retro.array;
 
     foreach (i; 0 .. NR) {
         auto data = getData();
