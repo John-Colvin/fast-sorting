@@ -29,6 +29,8 @@ Elem[] binnedCountingSort(Elem[] r) {
         return (Unsigned!Elem(x) - min) >> shift;
     }
     immutable nBins = b(max) + 1;
+    //import std.stdio;
+    //writeln("min: ", min, " max: ", max, " nBins: ", nBins);
 
     auto p = calloc(nBins * size_t.sizeof, 1);
     if (p is null)
@@ -83,6 +85,27 @@ do {
     return tuple(min, max);
 }
 
+auto approximateMedian(R)(R r)
+if (isInputRange!R)
+in (!r.empty)
+do {
+    // choose a grid of e.g. 5 points:
+    //
+    // min,
+    // min + (max - min) / 4,
+    // min + (max - min) / 2,
+    // min + 3 * (max - min) / 4,
+    // max
+    //
+    // where min and max are the running min and max so far
+    //
+    // count how many elements are within each grid region as you walk
+    // range.
+    //
+    // if you hit a new min or max, create a new grid and interpolate the
+    // old counts on to it.
+}
+
 pragma(inline, false)
 Elem[] phobosSort(Elem[] r) {
     import std.algorithm : sort;
@@ -126,6 +149,8 @@ void main(string[] args) {
         alias getData = () => iota(len).map!(i => (i + ((i & 1) ? len / 2 : 0)).to!Elem).array;
     version (ReverseComb)
         alias getData = () => iota(len).map!(i => (i + ((i & 1) ? len / 2 : 0)).to!Elem).retro.array;
+    version (RandomBinary)
+        alias getData = () => iota(len).map!(i => uniform(Elem(0), Elem(2))).array;
 
     foreach (i; 0 .. NR) {
         auto data = getData();
