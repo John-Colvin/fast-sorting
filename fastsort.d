@@ -124,7 +124,7 @@ void main(string[] args) {
     import std.random : uniform;
     import std.datetime.stopwatch : StopWatch;
     import std.algorithm : map, isSorted;
-    import std.range : iota, retro;
+    import std.range : iota, retro, chain;
     import std.array : array;
     import std.conv : to;
     import std.exception : enforce;
@@ -151,6 +151,8 @@ void main(string[] args) {
         alias getData = () => iota(len).map!(i => (i + ((i & 1) ? len / 2 : 0)).to!Elem).retro.array;
     version (RandomBinary)
         alias getData = () => iota(len).map!(i => uniform(Elem(0), Elem(2))).array;
+    version (OrganPipe)
+        alias getData = () => iota((len / 2).to!Elem).chain((len & 1) ? [(1 + len / 2).to!Elem] : [], iota((len / 2).to!Elem).retro).array;
 
     foreach (i; 0 .. NR) {
         auto data = getData();
