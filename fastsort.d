@@ -13,6 +13,8 @@ Elem[] binnedCountingSort(Elem[] r) {
     Elem min, max;
     AliasSeq!(min, max) = minMax(r);
 
+    // magic number that seems to work well. Results are mostly not that
+    // sensitive to it though
     enum targetNumPerBin = 16;
     immutable k = targetNumPerBin * lround(double(max - min + 1) / r.length);
     immutable shift = bsr(k);
@@ -101,7 +103,7 @@ void main(string[] args) {
     version (Squared)
         alias getData = () => iota(len).map!(i => uniform(Elem(0), len.to!Elem / 100)^^2).array;
     version (SmoothSquared)
-        alias getData = () => iota(len).map!(i => uniform(Elem(0), ((len.to!double / 10000)^^4).to!Elem)).array;
+        alias getData = () => iota(len).map!(i => uniform(Elem(0), ((len.to!double / 10000)^^2).to!Elem)).array;
     version (Forward)
         alias getData = () => iota(len).map!(i => i.to!Elem).array;
     version (Reverse)
@@ -139,7 +141,9 @@ void main(string[] args) {
     foreach (i; 0 .. NR) {
         auto data = getData();
         sw.start();
+        GC.disable();
         data = cppSort(data);
+        GC.enable();
         sw.stop();
     }
 
