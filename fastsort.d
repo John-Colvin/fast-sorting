@@ -1,5 +1,7 @@
+alias Elem = int;
+
 pragma(inline, false)
-int[] binnedCountingSort(int[] r) {
+Elem[] binnedCountingSort(Elem[] r) {
     import core.bitop : bsr;
     import core.stdc.stdlib : calloc, free;
     import std.algorithm.sorting : sort;
@@ -7,13 +9,13 @@ int[] binnedCountingSort(int[] r) {
     import std.meta : AliasSeq;
     import std.typecons : tuple;
 
-    int min, max;
+    Elem min, max;
     AliasSeq!(min, max) = minMax(r);
 
     enum targetNumPerBin = 16;
     immutable k = targetNumPerBin * lround(double(max - min + 1) / r.length);
     immutable shift = bsr(k);
-    alias b = (int x) => size_t(x - min) >> shift;
+    alias b = (Elem x) => size_t(x - min) >> shift;
     immutable nBins = b(max) + 1;
 
     auto p = calloc(nBins * size_t.sizeof, 1);
@@ -31,7 +33,7 @@ int[] binnedCountingSort(int[] r) {
     foreach (ref count; counts)
         AliasSeq!(count, total) = tuple(total, count + total);
 
-    auto res = new int[](r.length);
+    auto res = new Elem[](r.length);
     foreach (el; r) {
         res[counts[b(el)]] = el;
         counts[b(el)]++;
@@ -49,8 +51,8 @@ int[] binnedCountingSort(int[] r) {
 auto minMax(R)(R r) {
     import std.typecons : tuple;
 
-    int min = r[0];
-    int max = r[0];
+    Elem min = r[0];
+    Elem max = r[0];
     foreach (el; r[1 .. $]) {
         if (el < min)
             min = el;
@@ -61,16 +63,16 @@ auto minMax(R)(R r) {
 }
 
 pragma(inline, false)
-int[] phobosSort(int[] r) {
+Elem[] phobosSort(Elem[] r) {
     import std.algorithm : sort;
     r.sort();
     return r;
 }
 
-extern (C) int[] cppSortImpl(int[] r);
+extern (C) Elem[] cppSortImpl(Elem[] r);
 
 pragma(inline, false)
-int[] cppSort(int[] r) {
+Elem[] cppSort(Elem[] r) {
     return cppSortImpl(r);
 }
 
@@ -90,17 +92,17 @@ void main(string[] args) {
     immutable len = args[1].to!size_t;
 
     version (Uniform)
-        alias getData = () => iota(len).map!(i => uniform(int(0), len.to!int / 100)).array;
+        alias getData = () => iota(len).map!(i => uniform(Elem(0), len.to!Elem / 100)).array;
     version (Squared)
-        alias getData = () => iota(len).map!(i => uniform(int(0), len.to!int / 100)^^2).array;
+        alias getData = () => iota(len).map!(i => uniform(Elem(0), len.to!Elem / 100)^^2).array;
     version (Forward)
-        alias getData = () => iota(len).map!(i => i.to!int).array;
+        alias getData = () => iota(len).map!(i => i.to!Elem).array;
     version (Reverse)
-        alias getData = () => iota(len).map!(i => i.to!int).retro.array;
+        alias getData = () => iota(len).map!(i => i.to!Elem).retro.array;
     version (Comb)
-        alias getData = () => iota(len).map!(i => (i + ((i & 1) ? len / 2 : 0)).to!int).array;
+        alias getData = () => iota(len).map!(i => (i + ((i & 1) ? len / 2 : 0)).to!Elem).array;
     version (ReverseComb)
-        alias getData = () => iota(len).map!(i => (i + ((i & 1) ? len / 2 : 0)).to!int).retro.array;
+        alias getData = () => iota(len).map!(i => (i + ((i & 1) ? len / 2 : 0)).to!Elem).retro.array;
 
     foreach (i; 0 .. NR) {
         auto data = getData();
