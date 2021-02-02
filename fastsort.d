@@ -1,7 +1,8 @@
 alias Elem = int;
 
-pragma(inline, false)
 Elem[] binnedCountingSort(Elem[] r) {
+    pragma(LDC_never_inline);
+
     import core.bitop : bsr;
     import core.stdc.stdlib : calloc, free;
     import std.algorithm.sorting : sort;
@@ -15,7 +16,10 @@ Elem[] binnedCountingSort(Elem[] r) {
     enum targetNumPerBin = 16;
     immutable k = targetNumPerBin * lround(double(max - min + 1) / r.length);
     immutable shift = bsr(k);
-    alias b = (Elem x) => size_t(x - min) >> shift;
+    size_t b(Elem x) {
+        pragma(inline, true);
+        return size_t(x - min) >> shift;
+    }
     immutable nBins = b(max) + 1;
 
     auto p = calloc(nBins * size_t.sizeof, 1);
@@ -25,7 +29,7 @@ Elem[] binnedCountingSort(Elem[] r) {
         free(p);
     auto counts = (cast(size_t*) p)[0 .. nBins];
 
-    foreach (el; r) {
+    foreach (immutable el; r) {
         counts[b(el)]++;
     }
 
@@ -34,9 +38,10 @@ Elem[] binnedCountingSort(Elem[] r) {
         AliasSeq!(count, total) = tuple(total, count + total);
 
     auto res = new Elem[](r.length);
-    foreach (el; r) {
-        res[counts[b(el)]] = el;
-        counts[b(el)]++;
+    foreach (immutable el; r) {
+        auto countPtr = counts.ptr + b(el);
+        res[*countPtr] = el;
+        (*countPtr)++;
     }
 
     if (shift != 0) {
@@ -95,6 +100,8 @@ void main(string[] args) {
         alias getData = () => iota(len).map!(i => uniform(Elem(0), len.to!Elem / 100)).array;
     version (Squared)
         alias getData = () => iota(len).map!(i => uniform(Elem(0), len.to!Elem / 100)^^2).array;
+    version (SmoothSquared)
+        alias getData = () => iota(len).map!(i => uniform(Elem(0), ((len.to!double / 10000)^^4).to!Elem)).array;
     version (Forward)
         alias getData = () => iota(len).map!(i => i.to!Elem).array;
     version (Reverse)
@@ -139,4 +146,4 @@ void main(string[] args) {
     writeln("std::sort:      ", sw.peek);
 }
 
-enum NR = 1;
+enum NR = 10;
