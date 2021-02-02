@@ -1,3 +1,5 @@
+import std.range.primitives : isInputRange, empty;
+
 alias Elem = int;
 
 Elem[] binnedCountingSort(Elem[] r) {
@@ -8,6 +10,7 @@ Elem[] binnedCountingSort(Elem[] r) {
     import std.algorithm.sorting : sort;
     import std.math : lround;
     import std.meta : AliasSeq;
+    import std.traits : Unsigned;
     import std.typecons : tuple;
 
     Elem min, max;
@@ -17,13 +20,13 @@ Elem[] binnedCountingSort(Elem[] r) {
     // sensitive to it though
     enum targetNumPerBin = 16;
     // Divisor for the keys to decide which bin they go in, based on targetNumPerBin
-    immutable k = targetNumPerBin * lround(double(max - min + 1) / r.length);
+    immutable k = targetNumPerBin * lround((double(Unsigned!Elem(max) - min) + 1) / r.length);
     // But actually we go for a power of two and do it as a shift, for speed
     immutable shift = bsr(k);
     // Choose the bin, based on the key
     size_t b(Elem x) {
         pragma(inline, true);
-        return size_t(x - min) >> shift;
+        return (Unsigned!Elem(x) - min) >> shift;
     }
     immutable nBins = b(max) + 1;
 
@@ -63,7 +66,10 @@ Elem[] binnedCountingSort(Elem[] r) {
     return res;
 }
 
-auto minMax(R)(R r) {
+auto minMax(R)(R r)
+if (isInputRange!R)
+in (!r.empty)
+do {
     import std.typecons : tuple;
 
     Elem min = r[0];
