@@ -16,8 +16,11 @@ Elem[] binnedCountingSort(Elem[] r) {
     // magic number that seems to work well. Results are mostly not that
     // sensitive to it though
     enum targetNumPerBin = 16;
+    // Divisor for the keys to decide which bin they go in, based on targetNumPerBin
     immutable k = targetNumPerBin * lround(double(max - min + 1) / r.length);
+    // But actually we go for a power of two and do it as a shift, for speed
     immutable shift = bsr(k);
+    // Choose the bin, based on the key
     size_t b(Elem x) {
         pragma(inline, true);
         return size_t(x - min) >> shift;
@@ -31,14 +34,17 @@ Elem[] binnedCountingSort(Elem[] r) {
         free(p);
     auto counts = (cast(size_t*) p)[0 .. nBins];
 
-    foreach (immutable el; r) {
+    // count how many will go in each bin
+    foreach (immutable el; r)
         counts[b(el)]++;
-    }
 
+    // turn that in to a cumulative count starting at 0
+    // the top count is lost from counts but that's implicit from the length of the input
     size_t total = 0;
     foreach (ref count; counts)
         AliasSeq!(count, total) = tuple(total, count + total);
 
+    // put everything in its place based on the counts.
     auto res = new Elem[](r.length);
     foreach (immutable el; r) {
         auto countPtr = counts.ptr + b(el);
@@ -46,6 +52,8 @@ Elem[] binnedCountingSort(Elem[] r) {
         (*countPtr)++;
     }
 
+    // sort each bin separately.
+    // if shift is 0 then each bin is uniform, so no need to sort them
     if (shift != 0) {
         res[0 .. counts[0]].sort();
         foreach (i; 1 .. counts.length)
