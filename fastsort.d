@@ -5,13 +5,8 @@ alias Elem = int;
 Elem[] binnedCountingSort(Elem[] r) {
     pragma(LDC_never_inline);
 
-    import core.bitop : bsr;
-    import core.stdc.stdlib : calloc, free;
-    import std.algorithm.sorting : sort;
-    import std.math : lround;
     import std.meta : AliasSeq;
     import std.traits : Unsigned;
-    import std.typecons : tuple;
 
     Elem min, max;
     AliasSeq!(min, max) = minMax(r);
@@ -20,17 +15,58 @@ Elem[] binnedCountingSort(Elem[] r) {
     // sensitive to it though
     enum targetNumPerBin = 16;
     // Divisor for the keys to decide which bin they go in, based on targetNumPerBin
-    immutable k = targetNumPerBin * lround((double(Unsigned!Elem(max) - min) + 1) / r.length);
-    // But actually we go for a power of two and do it as a shift, for speed
-    immutable shift = bsr(k);
+    immutable k = targetNumPerBin * double(Unsigned!Elem(max) - min) / r.length;
+
+    if (k < 0.75) // TODO: should be something with sqrt(2)???
+        return r.binnedCountingSortImpl!(Scaling.up)(min, max, k);
+    if (k >= 1.5) // TODO: ditto
+        return r.binnedCountingSortImpl!(Scaling.down)(min, max, k);
+    return r.binnedCountingSortImpl!(Scaling.none)(min, max, k);
+
+}
+
+enum Scaling {
+    up,
+    down,
+    none
+}
+
+Elem[] binnedCountingSortImpl(Scaling scaling)(Elem[] r, immutable Elem min, immutable Elem max, immutable double k)
+in (scaling > 0)
+body {
+    import core.stdc.stdlib : calloc, free;
+    import std.algorithm.sorting : sort;
+    import std.math : lround, log2;
+    import std.meta : AliasSeq;
+    import std.traits : Unsigned;
+    import std.typecons : tuple;
+
     // Choose the bin, based on the key
-    size_t b(Elem x) {
-        pragma(inline, true);
-        return (Unsigned!Elem(x) - min) >> shift;
+    static if (scaling == Scaling.none) {
+        size_t b(Elem x) {
+            pragma(inline, true);
+            return Unsigned!Elem(x) - min;
+        }
     }
+    else static if (scaling == Scaling.down) {
+        immutable shift = lround(log2(k));
+        size_t b(Elem x) {
+            pragma(inline, true);
+            return (Unsigned!Elem(x) - min) >> shift;
+        }
+    }
+    else static if (scaling == Scaling.up) {
+        immutable shift = lround(log2(1/k));
+        size_t b(Elem x) {
+            pragma(inline, true);
+            return (Unsigned!Elem(x) - min) << shift;
+        }
+    }
+    else static assert(0);
+
     immutable nBins = b(max) + 1;
     //import std.stdio;
-    //writeln("min: ", min, " max: ", max, " nBins: ", nBins);
+    //writeln("length: ", r.length, " scaling ", scaling, " min: ", min, " max: ", max, " k: ", k, " nBins: ", nBins);
 
     auto p = calloc(nBins * size_t.sizeof, 1);
     if (p is null)
@@ -59,7 +95,7 @@ Elem[] binnedCountingSort(Elem[] r) {
 
     // sort each bin separately.
     // if shift is 0 then each bin is uniform, so no need to sort them
-    if (shift != 0) {
+    static if (scaling == Scaling.none) {
         res[0 .. counts[0]].sort();
         foreach (i; 1 .. counts.length)
             res[counts[i - 1] .. counts[i]].sort();
