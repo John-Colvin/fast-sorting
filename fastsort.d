@@ -95,7 +95,7 @@ body {
 
     // sort each bin separately.
     // if shift is 0 then each bin is uniform, so no need to sort them
-    static if (scaling == Scaling.none) {
+    static if (scaling != Scaling.none) {
         res[0 .. counts[0]].sort();
         foreach (i; 1 .. counts.length)
             res[counts[i - 1] .. counts[i]].sort();
