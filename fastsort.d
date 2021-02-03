@@ -17,16 +17,17 @@ Elem[] binnedCountingSort(Elem[] r) {
     // Divisor for the keys to decide which bin they go in, based on targetNumPerBin
     immutable k = targetNumPerBin * double(Unsigned!Elem(max) - min) / r.length;
 
+    /+ // for future floating point support
     if (k < 0.75) // TODO: should be something with sqrt(2)???
         return r.binnedCountingSortImpl!(Scaling.up)(min, max, k);
+    +/
     if (k >= 1.5) // TODO: ditto
         return r.binnedCountingSortImpl!(Scaling.down)(min, max, k);
     return r.binnedCountingSortImpl!(Scaling.none)(min, max, k);
-
 }
 
 enum Scaling {
-    up,
+    up, /// only relevant for floating point
     down,
     none
 }
@@ -50,18 +51,21 @@ body {
     }
     else static if (scaling == Scaling.down) {
         immutable shift = lround(log2(k));
+        assert(shift > 0);
         size_t b(Elem x) {
             pragma(inline, true);
             return (Unsigned!Elem(x) - min) >> shift;
         }
     }
+    /+ // for future floating point support
     else static if (scaling == Scaling.up) {
         immutable shift = lround(log2(1/k));
+        assert(shift > 0);
         size_t b(Elem x) {
             pragma(inline, true);
             return (Unsigned!Elem(x) - min) << shift;
         }
-    }
+    }+/
     else static assert(0);
 
     immutable nBins = b(max) + 1;
