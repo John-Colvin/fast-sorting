@@ -176,7 +176,7 @@ void main(string[] args) {
     import std.random : uniform;
     import std.datetime.stopwatch : StopWatch;
     import std.algorithm : map, isSorted;
-    import std.range : iota, retro, chain;
+    import std.range : iota, retro, chain, cycle, drop, dropOne, takeExactly, repeat;
     import std.array : array;
     import std.conv : to;
     import std.exception : enforce;
@@ -189,10 +189,14 @@ void main(string[] args) {
 
     version (Uniform)
         alias getData = () => iota(len).map!(i => uniform(Elem(0), len.to!Elem / 100)).array;
+    version (UniformEqualRange)
+        alias getData = () => iota(len).map!(i => uniform(Elem(0), len.to!Elem)).array;
+    version (UniformFullRange)
+        alias getData = () => iota(len).map!(i => uniform(Elem.min, Elem.max)).array;
     version (Squared)
         alias getData = () => iota(len).map!(i => uniform(Elem(0), len.to!Elem / 100)^^2).array;
-    version (SmoothSquared)
-        alias getData = () => iota(len).map!(i => uniform(Elem(0), ((len.to!double / 10000)^^2).to!Elem)).array;
+    version (SmoothPow4)
+        alias getData = () => iota(len).map!(i => uniform(Elem(0), ((len.to!double / 10000)^^4).to!Elem)).array;
     version (Forward)
         alias getData = () => iota(len).map!(i => i.to!Elem).array;
     version (Reverse)
@@ -205,6 +209,14 @@ void main(string[] args) {
         alias getData = () => iota(len).map!(i => uniform(Elem(0), Elem(2))).array;
     version (OrganPipe)
         alias getData = () => iota((len / 2).to!Elem).chain((len & 1) ? [(1 + len / 2).to!Elem] : [], iota((len / 2).to!Elem).retro).array;
+    version (MinAtBack)
+        alias getData = () => iota(len).map!(i => i.to!Elem).cycle.dropOne.takeExactly(len).array;
+    version (MaxAtFront)
+        alias getData = () => iota(len).map!(i => i.to!Elem).cycle.drop(len - 1).takeExactly(len).array;
+    version (FlatSpike)
+        alias getData = () => chain([10000], repeat(0, len - 1)).array;
+    version (RampSpike)
+        alias getData = () => chain([(len * 10).to!Elem], iota((len - 1).to!Elem)).array;
 
     foreach (i; 0 .. NR) {
         auto data = getData();
