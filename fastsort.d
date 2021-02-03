@@ -2,9 +2,8 @@ import std.range.primitives : isInputRange, empty;
 
 alias Elem = int;
 
-pragma(inline, false)
 Elem[] binnedCountingSort(Elem[] r) {
-    pragma(LDC_never_inline);
+    pragma(inline, false);
 
     import std.meta : AliasSeq;
     import std.traits : Unsigned;
@@ -130,6 +129,7 @@ do {
     return tuple(min, max);
 }
 
+/+ WIP
 auto approximateMedian(R)(R r)
 if (isInputRange!R)
 in (!r.empty)
@@ -150,6 +150,7 @@ do {
     // if you hit a new min or max, create a new grid and interpolate the
     // old counts on to it.
 }
++/
 
 pragma(inline, false)
 Elem[] phobosSort(Elem[] r) {
@@ -165,6 +166,7 @@ Elem[] cppSort(Elem[] r) {
     return cppSortImpl(r);
 }
 
+pragma(inline, false)
 void main(string[] args) {
     import std.random : uniform;
     import std.datetime.stopwatch : StopWatch;
