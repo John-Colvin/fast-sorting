@@ -2,6 +2,7 @@ import std.range.primitives : isInputRange, empty;
 
 alias Elem = int;
 
+pragma(inline, false)
 Elem[] binnedCountingSort(Elem[] r) {
     pragma(LDC_never_inline);
 
@@ -44,6 +45,7 @@ body {
 
     // Choose the bin, based on the key
     static if (scaling == Scaling.none) {
+        version (PrintInfo) immutable shift = 0;
         size_t b(Elem x) {
             pragma(inline, true);
             return Unsigned!Elem(x) - min;
@@ -69,8 +71,11 @@ body {
     else static assert(0);
 
     immutable nBins = b(max) + 1;
-    //import std.stdio;
-    //writeln("length: ", r.length, " scaling ", scaling, " min: ", min, " max: ", max, " k: ", k, " nBins: ", nBins);
+
+    version (PrintInfo) {
+        import std.stdio;
+        writeln("length: ", r.length, " scaling ", scaling, " min: ", min, " max: ", max, " k: ", k, " shift: ", shift, " nBins: ", nBins);
+    }
 
     auto p = calloc(nBins * size_t.sizeof, 1);
     if (p is null)
