@@ -37,7 +37,7 @@ Elem[] binnedCountingSortImpl(Scaling scaling)(Elem[] r, immutable Elem min, imm
 in (scaling > 0)
 body {
     import core.stdc.stdlib : calloc, free;
-    import std.algorithm.sorting : sort;
+    import phobossort : sort;
     import std.math : lround, log2;
     import std.meta : AliasSeq;
     import std.traits : Unsigned;
@@ -153,7 +153,7 @@ do {
 
 pragma(inline, false)
 Elem[] phobosSort(Elem[] r) {
-    import std.algorithm : sort;
+    import phobossort: sort;
     r.sort();
     return r;
 }
