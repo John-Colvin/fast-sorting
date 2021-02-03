@@ -185,38 +185,59 @@ void main(string[] args) {
     import core.memory : GC;
     StopWatch sw;
 
-    immutable len = args[1].to!size_t;
+    immutable experiment = args[1];
+    immutable len = args[2].to!size_t;
 
-    version (Uniform)
-        alias getData = () => iota(len).map!(i => uniform(Elem(0), len.to!Elem / 100)).array;
-    version (UniformEqualRange)
-        alias getData = () => iota(len).map!(i => uniform(Elem(0), len.to!Elem)).array;
-    version (UniformFullRange)
-        alias getData = () => iota(len).map!(i => uniform(Elem.min, Elem.max)).array;
-    version (Squared)
-        alias getData = () => iota(len).map!(i => uniform(Elem(0), len.to!Elem / 100)^^2).array;
-    version (SmoothPow4)
-        alias getData = () => iota(len).map!(i => uniform(Elem(0), ((len.to!double / 10000)^^4).to!Elem)).array;
-    version (Forward)
-        alias getData = () => iota(len).map!(i => i.to!Elem).array;
-    version (Reverse)
-        alias getData = () => iota(len).map!(i => i.to!Elem).retro.array;
-    version (Comb)
-        alias getData = () => iota(len).map!(i => (i + ((i & 1) ? len / 2 : 0)).to!Elem).array;
-    version (ReverseComb)
-        alias getData = () => iota(len).map!(i => (i + ((i & 1) ? len / 2 : 0)).to!Elem).retro.array;
-    version (RandomBinary)
-        alias getData = () => iota(len).map!(i => uniform(Elem(0), Elem(2))).array;
-    version (OrganPipe)
-        alias getData = () => iota((len / 2).to!Elem).chain((len & 1) ? [(1 + len / 2).to!Elem] : [], iota((len / 2).to!Elem).retro).array;
-    version (MinAtBack)
-        alias getData = () => iota(len).map!(i => i.to!Elem).cycle.dropOne.takeExactly(len).array;
-    version (MaxAtFront)
-        alias getData = () => iota(len).map!(i => i.to!Elem).cycle.drop(len - 1).takeExactly(len).array;
-    version (FlatSpike)
-        alias getData = () => chain([10000], repeat(0, len - 1)).array;
-    version (RampSpike)
-        alias getData = () => chain([(len * 10).to!Elem], iota((len - 1).to!Elem)).array;
+    Elem[] delegate() getData;
+    switch(experiment) {
+        case "Uniform":
+            getData = () => iota(len).map!(i => uniform(Elem(0), len.to!Elem / 100)).array;
+            break;
+        case "UniformEqualRange":
+            getData = () => iota(len).map!(i => uniform(Elem(0), len.to!Elem)).array;
+            break;
+        case "UniformFullRange":
+            getData = () => iota(len).map!(i => uniform(Elem.min, Elem.max)).array;
+            break;
+        case "Squared":
+            getData = () => iota(len).map!(i => uniform(Elem(0), len.to!Elem / 100)^^2).array;
+            break;
+        case "SmoothPow4":
+            getData = () => iota(len).map!(i => uniform(Elem(0), ((len.to!double / 10000)^^4).to!Elem)).array;
+            break;
+        case "Forward":
+            getData = () => iota(len).map!(i => i.to!Elem).array;
+            break;
+        case "Reverse":
+            getData = () => iota(len).map!(i => i.to!Elem).retro.array;
+            break;
+        case "Comb":
+            getData = () => iota(len).map!(i => (i + ((i & 1) ? len / 2 : 0)).to!Elem).array;
+            break;
+        case "ReverseComb":
+            getData = () => iota(len).map!(i => (i + ((i & 1) ? len / 2 : 0)).to!Elem).retro.array;
+            break;
+        case "RandomBinary":
+            getData = () => iota(len).map!(i => uniform(Elem(0), Elem(2))).array;
+            break;
+        case "OrganPipe":
+            getData = () => iota((len / 2).to!Elem).chain((len & 1) ? [(1 + len / 2).to!Elem] : [], iota((len / 2).to!Elem).retro).array;
+            break;
+        case "MinAtBack":
+            getData = () => iota(len).map!(i => i.to!Elem).cycle.dropOne.takeExactly(len).array;
+            break;
+        case "MaxAtFront":
+            getData = () => iota(len).map!(i => i.to!Elem).cycle.drop(len - 1).takeExactly(len).array;
+            break;
+        case "FlatSpike":
+            getData = () => chain([10000], repeat(0, len - 1)).array;
+            break;
+        case "RampSpike":
+            getData = () => chain([(len * 10).to!Elem], iota((len - 1).to!Elem)).array;
+            break;
+        default:
+            throw new Exception("did not recognise experiment \"" ~ experiment ~ "\"");
+    }
 
     foreach (i; 0 .. NR) {
         auto data = getData();
@@ -230,7 +251,7 @@ void main(string[] args) {
         enforce(data.isSorted && data == orig.phobosSort);
     }
 
-    writeln("prePartitioned: ", sw.peek);
+    writeln("binned sort:        ", sw.peek);
 
     sw.reset();
     foreach (i; 0 .. NR) {
@@ -240,7 +261,7 @@ void main(string[] args) {
         sw.stop();
     }
 
-    writeln("std.sort:       ", sw.peek);
+    writeln("std.algorithm.sort: ", sw.peek);
 
     sw.reset();
     foreach (i; 0 .. NR) {
@@ -252,7 +273,7 @@ void main(string[] args) {
         sw.stop();
     }
 
-    writeln("std::sort:      ", sw.peek);
+    writeln("std::sort:          ", sw.peek);
 }
 
 enum NR = 10;
