@@ -87,6 +87,11 @@ body {
     foreach (immutable el; r)
         counts[b(el)]++;
 
+    version (PrintInfo) {{
+        auto countStats = minMax(counts);
+        writeln("counts min: ", countStats[0], " counts max: ", countStats[1]);
+    }}
+
     // turn that in to a cumulative count starting at 0
     // the top count is lost from counts but that's implicit from the length of the input
     size_t total = 0;
@@ -118,8 +123,8 @@ in (!r.empty)
 do {
     import std.typecons : tuple;
 
-    Elem min = r[0];
-    Elem max = r[0];
+    auto min = r[0];
+    auto max = r[0];
     foreach (el; r[1 .. $]) {
         if (el < min)
             min = el;
