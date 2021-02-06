@@ -171,6 +171,20 @@ Elem[] cppSort(Elem[] r) {
     return cppSortImpl(r);
 }
 
+extern (C) Elem[] kxSortImpl(Elem[] r);
+
+pragma(inline, false)
+Elem[] kxSort(Elem[] r) {
+    return kxSortImpl(r);
+}
+
+extern (C) Elem[] boostSortImpl(Elem[] r);
+
+pragma(inline, false)
+Elem[] boostSort(Elem[] r) {
+    return boostSortImpl(r);
+}
+
 pragma(inline, false)
 void main(string[] args) {
     import std.random : uniform;
@@ -251,7 +265,7 @@ void main(string[] args) {
         enforce(data.isSorted && data == orig.phobosSort);
     }
 
-    writeln("binned sort:        ", sw.peek);
+    writeln("binned sort:                          ", sw.peek);
 
     sw.reset();
     foreach (i; 0 .. NR) {
@@ -261,19 +275,43 @@ void main(string[] args) {
         sw.stop();
     }
 
-    writeln("std.algorithm.sort: ", sw.peek);
+    writeln("std.algorithm.sort:                   ", sw.peek);
 
     sw.reset();
     foreach (i; 0 .. NR) {
         auto data = getData();
+        auto orig = data.dup;
         sw.start();
-        GC.disable();
         data = cppSort(data);
-        GC.enable();
         sw.stop();
+        enforce(data.isSorted && data == orig.phobosSort);
     }
 
-    writeln("std::sort:          ", sw.peek);
+    writeln("std::sort:                            ", sw.peek);
+
+    sw.reset();
+    foreach (i; 0 .. NR) {
+        auto data = getData();
+        auto orig = data.dup;
+        sw.start();
+        data = kxSort(data);
+        sw.stop();
+        enforce(data.isSorted && data == orig.phobosSort);
+    }
+
+    writeln("kx::radix_sort:                       ", sw.peek);
+
+    sw.reset();
+    foreach (i; 0 .. NR) {
+        auto data = getData();
+        auto orig = data.dup;
+        sw.start();
+        data = boostSort(data);
+        sw.stop();
+        enforce(data.isSorted && data == orig.phobosSort);
+    }
+
+    writeln("boost::sort::spreadsort::integer_sort ", sw.peek);
 }
 
 enum NR = 10;

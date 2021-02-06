@@ -9,5 +9,6 @@ experiments=("Uniform" "UniformEqualRange" "UniformFullRange" "Squared" "SmoothP
 for experiment in ${experiments[@]}; do
     echo $experiment
     ./fastsort $experiment $N
+    echo
 done
 
