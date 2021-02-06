@@ -9,7 +9,11 @@ Elem[] binnedCountingSort(Elem[] r) {
     import std.traits : Unsigned;
 
     Elem min, max;
-    AliasSeq!(min, max) = minMax(r);
+    bool sorted;
+    AliasSeq!(min, max, sorted) = minMax(r);
+
+    if (sorted)
+        return r;
 
     // magic number that seems to work well. Results are mostly not that
     // sensitive to it though
@@ -125,13 +129,16 @@ do {
 
     auto min = r[0];
     auto max = r[0];
+    bool sorted = true;
     foreach (el; r[1 .. $]) {
         if (el < min)
             min = el;
         if (el > max)
             max = el;
+        else
+            sorted = false;
     }
-    return tuple(min, max);
+    return tuple(min, max, sorted);
 }
 
 /+ WIP
