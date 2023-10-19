@@ -73,7 +73,7 @@ body {
 
     version (PrintInfo) {
         import std.stdio;
-        writeln("length: ", r.length, " scaling ", scaling, " min: ", min, " max: ", max, " k: ", k, " shift: ", shift, " nBins: ", nBins);
+        writeln("length: ", r.length, " scaling: ", scaling, " min: ", min, " max: ", max, " k: ", k, " shift: ", shift, " nBins: ", nBins, " nPerBin: ", double(r.length) / nBins);
     }
 
     auto p = calloc(nBins * size_t.sizeof, 1);
