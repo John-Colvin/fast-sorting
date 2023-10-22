@@ -99,26 +99,27 @@ body {
         writeln(counts);
     }}
 
+    auto res = new Elem[](r.length);
+
     // turn that in to a cumulative count starting at 0
     // the top count is lost from counts but that's implicit from the length of the input
-    size_t total = 0;
+    size_t total = cast(size_t) res.ptr;
     foreach (ref count; counts)
-        AliasSeq!(count, total) = tuple(total, count + total);
+        AliasSeq!(count, total) = tuple(total, (count * Elem.sizeof) + total);
+    
+    auto buckets = cast(Elem*[]) counts;
 
     // put everything in its place based on the counts.
-    auto res = new Elem[](r.length);
     foreach (immutable el; r) {
-        auto countPtr = counts.ptr + b(el);
-        res[*countPtr] = el;
-        (*countPtr)++;
+        *(buckets[b(el)]++) = el;
     }
 
     // sort each bin separately.
     // if shift is 0 then each bin is uniform, so no need to sort them
     static if (scaling != Scaling.none) {
-        res[0 .. counts[0]].sort();
-        foreach (i; 1 .. counts.length)
-            res[counts[i - 1] .. counts[i]].sort();
+        res[0 .. buckets[0] - res.ptr].sort();
+        foreach (i; 1 .. buckets.length)
+            buckets[i - 1][0 .. buckets[i] - buckets[i-1]].sort();
     }
 
     return res;

@@ -11,4 +11,3 @@ for experiment in ${experiments[@]}; do
     ./fastsort $experiment $N
     echo
 done
-
