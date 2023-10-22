@@ -2,18 +2,23 @@ import std.range.primitives : isInputRange, empty;
 
 alias Elem = int;
 
-Elem[] binnedCountingSort(Elem[] r) {
+Elem[] binnedCountingSort(Elem)(Elem[] r) {
     pragma(inline, false);
 
     import std.meta : AliasSeq;
     import std.traits : Unsigned;
 
     Elem min, max;
-    AliasSeq!(min, max) = minMax(r);
+    bool isSorted;
+    AliasSeq!(min, max) = minMaxIsSorted(r, isSorted);
+    if (isSorted) {
+        return r.dup;
+    }
 
     // magic number that seems to work well. Results are mostly not that
     // sensitive to it though
-    enum targetNumPerBin = 16;
+    // 16 seems sensible idk
+    enum targetNumPerBin = 4;
     // Divisor for the keys to decide which bin they go in, based on targetNumPerBin
     immutable k = targetNumPerBin * double(Unsigned!Elem(max) - min) / r.length;
 
@@ -73,7 +78,8 @@ body {
 
     version (PrintInfo) {
         import std.stdio;
-        writeln("length: ", r.length, " scaling: ", scaling, " min: ", min, " max: ", max, " k: ", k, " shift: ", shift, " nBins: ", nBins, " nPerBin: ", double(r.length) / nBins);
+        writeln("length: ", r.length, " scaling: ", scaling, " min: ", min, " max: ", max, " k: ", k,
+            " shift: ", shift, " nBins: ", nBins, " nPerBin: ", double(r.length) / nBins);
     }
 
     auto p = calloc(nBins * size_t.sizeof, 1);
@@ -90,6 +96,7 @@ body {
     version (PrintInfo) {{
         auto countStats = minMax(counts);
         writeln("counts min: ", countStats[0], " counts max: ", countStats[1]);
+        writeln(counts);
     }}
 
     // turn that in to a cumulative count starting at 0
@@ -117,7 +124,30 @@ body {
     return res;
 }
 
-auto minMax(R)(R r)
+auto minMaxPresort(R)(R r)
+if (isInputRange!R)
+in (!r.empty)
+do {
+    import std.typecons : tuple;
+    import std.algorithm : swap;
+
+    auto min = r[0];
+    auto max = r[0];
+    foreach (i; 1 .. r.length) {
+        const el = r[i];
+        if (el < min)
+            min = el;
+        if (el > max)
+            max = el;
+        if (r[i - 1] > el) {
+            r[i] = r[i - 1];
+            r[i - 1] = el;
+        }
+    }
+    return tuple(min, max);
+}
+
+auto minMax(R)(ref R r)
 if (isInputRange!R)
 in (!r.empty)
 do {
@@ -130,6 +160,27 @@ do {
             min = el;
         if (el > max)
             max = el;
+    }
+    return tuple(min, max);
+}
+
+auto minMaxIsSorted(R)(ref R r, out bool isSorted)
+if (isInputRange!R)
+in (!r.empty)
+do {
+    import std.typecons : tuple;
+    import std.algorithm : swap;
+
+    auto min = r[0];
+    auto max = r[0];
+    isSorted = true;
+    foreach (i; 1 .. r.length) {
+        const el = r[i];
+        if (el < min)
+            min = el;
+        if (el > max)
+            max = el;
+        isSorted = isSorted & (r[i - 1] <= el);
     }
     return tuple(min, max);
 }
@@ -262,7 +313,9 @@ void main(string[] args) {
         sw.stop();
         //GC.enable;
         //GC.collect();
-        enforce(data.isSorted && data == orig.phobosSort);
+        import std.conv : text;
+        enforce(data.isSorted);
+        enforce(data == orig.phobosSort);
     }
 
     writeln("binned sort:                          ", sw.peek);
