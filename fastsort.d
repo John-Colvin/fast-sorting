@@ -1,6 +1,6 @@
 import std.range.primitives : isInputRange, empty;
 
-alias Elem = int;
+alias Elem = long;
 
 Elem[] binnedCountingSort(Elem)(Elem[] r) {
     pragma(inline, false);
@@ -9,16 +9,18 @@ Elem[] binnedCountingSort(Elem)(Elem[] r) {
     import std.traits : Unsigned;
 
     Elem min, max;
-    bool isSorted;
-    AliasSeq!(min, max) = minMaxIsSorted(r, isSorted);
-    if (isSorted) {
+    size_t nOutOfOrder;
+    AliasSeq!(min, max) = stats(r, nOutOfOrder);
+    //import std.stdio;
+    //writeln(nOutOfOrder);
+    if (nOutOfOrder == 0) {
         return r.dup;
     }
 
     // magic number that seems to work well. Results are mostly not that
     // sensitive to it though
     // 16 seems sensible idk
-    enum targetNumPerBin = 4;
+    enum targetNumPerBin = 10;
     // Divisor for the keys to decide which bin they go in, based on targetNumPerBin
     immutable k = targetNumPerBin * double(Unsigned!Elem(max) - min) / r.length;
 
@@ -37,7 +39,8 @@ enum Scaling {
     none
 }
 
-Elem[] binnedCountingSortImpl(Scaling scaling)(Elem[] r, immutable Elem min, immutable Elem max, immutable double k)
+Elem[] binnedCountingSortImpl(Scaling scaling)(Elem[] r, immutable Elem min,
+    immutable Elem max, immutable double k)
 in (scaling > 0)
 body {
     import core.stdc.stdlib : calloc, free;
@@ -96,7 +99,6 @@ body {
     version (PrintInfo) {{
         auto countStats = minMax(counts);
         writeln("counts min: ", countStats[0], " counts max: ", countStats[1]);
-        writeln(counts);
     }}
 
     auto res = new Elem[](r.length);
@@ -117,12 +119,41 @@ body {
     // sort each bin separately.
     // if shift is 0 then each bin is uniform, so no need to sort them
     static if (scaling != Scaling.none) {
-        res[0 .. buckets[0] - res.ptr].sort();
+        res[0 .. buckets[0] - res.ptr].sortIfNecessary2();
         foreach (i; 1 .. buckets.length)
-            buckets[i - 1][0 .. buckets[i] - buckets[i-1]].sort();
+            buckets[i - 1][0 .. buckets[i] - buckets[i-1]].sortIfNecessary2();
     }
 
     return res;
+}
+
+pragma(inline, true)
+auto sortIfNecessary(Elem[] r) {
+    import std.range : assumeSorted;
+    import std.algorithm : sort;
+    foreach (i; 1 .. r.length) {
+        if (r[i - 1] > r[i]) {
+            return r.sort();
+        }
+    }
+    return r.assumeSorted;
+}
+
+pragma(inline, true)
+auto sortIfNecessary2(Elem[] r) {
+    import std.range : assumeSorted;
+    import std.algorithm : sort, swap, min;
+
+    r[0 .. min(3, r.length)].sort();
+    foreach (i; 3 .. r.length) {
+        if (r[i - 2] > r[i]) {
+            r.sort();
+            return;
+        }
+        if (r[i - 1] > r[i]) {
+            swap(r[i - 1], r[i]);
+        }
+    }
 }
 
 auto minMaxPresort(R)(R r)
@@ -165,23 +196,22 @@ do {
     return tuple(min, max);
 }
 
-auto minMaxIsSorted(R)(ref R r, out bool isSorted)
+auto stats(R)(ref R r, out size_t nOutOfOrder)
 if (isInputRange!R)
 in (!r.empty)
 do {
     import std.typecons : tuple;
-    import std.algorithm : swap;
 
     auto min = r[0];
     auto max = r[0];
-    isSorted = true;
+    nOutOfOrder = 0;
     foreach (i; 1 .. r.length) {
         const el = r[i];
         if (el < min)
             min = el;
         if (el > max)
             max = el;
-        isSorted = isSorted & (r[i - 1] <= el);
+        nOutOfOrder += (r[i - 1] > el);
     }
     return tuple(min, max);
 }
@@ -208,6 +238,12 @@ do {
     // old counts on to it.
 }
 +/
+
+// Elem[] sortish(Elem[] r) {
+//     foreach (i; 0 .. r) {
+        
+//     }
+// }
 
 pragma(inline, false)
 Elem[] phobosSort(Elem[] r) {
@@ -239,7 +275,7 @@ Elem[] boostSort(Elem[] r) {
 
 pragma(inline, false)
 void main(string[] args) {
-    import std.random : uniform;
+    import std.random : uniform, choice;
     import std.datetime.stopwatch : StopWatch;
     import std.algorithm : map, isSorted;
     import std.range : iota, retro, chain, cycle, drop, dropOne, takeExactly, repeat;
@@ -284,7 +320,10 @@ void main(string[] args) {
             getData = () => iota(len).map!(i => (i + ((i & 1) ? len / 2 : 0)).to!Elem).retro.array;
             break;
         case "RandomBinary":
-            getData = () => iota(len).map!(i => uniform(Elem(0), Elem(2))).array;
+            getData = () => iota(len).map!(i => choice([Elem(0), Elem(1)])).array;
+            break;
+        case "RandomBigBinary":
+            getData = () => iota(len).map!(i => choice([Elem.max / 2, Elem.max])).array;
             break;
         case "OrganPipe":
             getData = () => iota((len / 2).to!Elem).chain((len & 1) ? [(1 + len / 2).to!Elem] : [], iota((len / 2).to!Elem).retro).array;
@@ -296,7 +335,7 @@ void main(string[] args) {
             getData = () => iota(len).map!(i => i.to!Elem).cycle.drop(len - 1).takeExactly(len).array;
             break;
         case "FlatSpike":
-            getData = () => chain([10000], repeat(0, len - 1)).array;
+            getData = () => chain([Elem(10000)], repeat(0, len - 1)).array;
             break;
         case "RampSpike":
             getData = () => chain([(len * 10).to!Elem], iota((len - 1).to!Elem)).array;
@@ -315,7 +354,7 @@ void main(string[] args) {
         //GC.enable;
         //GC.collect();
         import std.conv : text;
-        enforce(data.isSorted);
+        enforce(data.isSorted, data.text);
         enforce(data == orig.phobosSort);
     }
 

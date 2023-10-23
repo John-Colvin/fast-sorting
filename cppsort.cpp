@@ -5,7 +5,7 @@
 
 struct Slice {
     size_t length;
-    int32_t *ptr;
+    int64_t *ptr;
 };
 
 extern "C" Slice cppSortImpl(Slice r) {
