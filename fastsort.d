@@ -1,7 +1,5 @@
 import std.range.primitives : isInputRange, empty;
 
-alias Elem = long;
-
 Elem[] binnedCountingSort(Elem)(Elem[] r) {
     pragma(inline, false);
 
@@ -39,7 +37,7 @@ enum Scaling {
     none
 }
 
-Elem[] binnedCountingSortImpl(Scaling scaling)(Elem[] r, immutable Elem min,
+Elem[] binnedCountingSortImpl(Scaling scaling, Elem)(Elem[] r, immutable Elem min,
     immutable Elem max, immutable double k)
 in (scaling > 0)
 body {
@@ -52,7 +50,7 @@ body {
 
     // Choose the bin, based on the key
     static if (scaling == Scaling.none) {
-        version (PrintInfo) immutable shift = 0;
+        debug (PrintInfo) immutable shift = 0;
         size_t b(Elem x) {
             pragma(inline, true);
             return Unsigned!Elem(x) - min;
@@ -79,7 +77,7 @@ body {
 
     immutable nBins = b(max) + 1;
 
-    version (PrintInfo) {
+    debug (PrintInfo) {
         import std.stdio;
         writeln("length: ", r.length, " scaling: ", scaling, " min: ", min, " max: ", max, " k: ", k,
             " shift: ", shift, " nBins: ", nBins, " nPerBin: ", double(r.length) / nBins);
@@ -96,7 +94,7 @@ body {
     foreach (immutable el; r)
         counts[b(el)]++;
 
-    version (PrintInfo) {{
+    debug (PrintInfo) {{
         auto countStats = minMax(counts);
         writeln("counts min: ", countStats[0], " counts max: ", countStats[1]);
     }}
@@ -128,7 +126,7 @@ body {
 }
 
 pragma(inline, true)
-auto sortIfNecessary(Elem[] r) {
+auto sortIfNecessary(Elem)(Elem[] r) {
     import std.range : assumeSorted;
     import std.algorithm : sort;
     foreach (i; 1 .. r.length) {
@@ -140,7 +138,7 @@ auto sortIfNecessary(Elem[] r) {
 }
 
 pragma(inline, true)
-auto sortIfNecessary2(Elem[] r) {
+auto sortIfNecessary2(Elem)(Elem[] r) {
     import std.range : assumeSorted;
     import std.algorithm : sort, swap, min;
 
@@ -244,167 +242,3 @@ do {
         
 //     }
 // }
-
-pragma(inline, false)
-Elem[] phobosSort(Elem[] r) {
-    import phobossort: sort;
-    r.sort();
-    return r;
-}
-
-extern (C) Elem[] cppSortImpl(Elem[] r);
-
-pragma(inline, false)
-Elem[] cppSort(Elem[] r) {
-    return cppSortImpl(r);
-}
-
-extern (C) Elem[] kxSortImpl(Elem[] r);
-
-pragma(inline, false)
-Elem[] kxSort(Elem[] r) {
-    return kxSortImpl(r);
-}
-
-extern (C) Elem[] boostSortImpl(Elem[] r);
-
-pragma(inline, false)
-Elem[] boostSort(Elem[] r) {
-    return boostSortImpl(r);
-}
-
-pragma(inline, false)
-void main(string[] args) {
-    import std.random : uniform, choice;
-    import std.datetime.stopwatch : StopWatch;
-    import std.algorithm : map, isSorted;
-    import std.range : iota, retro, chain, cycle, drop, dropOne, takeExactly, repeat;
-    import std.array : array;
-    import std.conv : to;
-    import std.exception : enforce;
-    import std.stdio : writeln;
-
-    import core.memory : GC;
-    StopWatch sw;
-
-    immutable experiment = args[1];
-    immutable len = args[2].to!size_t;
-
-    Elem[] delegate() getData;
-    switch(experiment) {
-        case "Uniform":
-            getData = () => iota(len).map!(i => uniform(Elem(0), len.to!Elem / 100)).array;
-            break;
-        case "UniformEqualRange":
-            getData = () => iota(len).map!(i => uniform(Elem(0), len.to!Elem)).array;
-            break;
-        case "UniformFullRange":
-            getData = () => iota(len).map!(i => uniform(Elem.min, Elem.max)).array;
-            break;
-        case "Squared":
-            getData = () => iota(len).map!(i => uniform(Elem(0), len.to!Elem / 100)^^2).array;
-            break;
-        case "SmoothPow4":
-            getData = () => iota(len).map!(i => uniform(Elem(0), ((len.to!double / 10000)^^4).to!Elem)).array;
-            break;
-        case "Forward":
-            getData = () => iota(len).map!(i => i.to!Elem).array;
-            break;
-        case "Reverse":
-            getData = () => iota(len).map!(i => i.to!Elem).retro.array;
-            break;
-        case "Comb":
-            getData = () => iota(len).map!(i => (i + ((i & 1) ? len / 2 : 0)).to!Elem).array;
-            break;
-        case "ReverseComb":
-            getData = () => iota(len).map!(i => (i + ((i & 1) ? len / 2 : 0)).to!Elem).retro.array;
-            break;
-        case "RandomBinary":
-            getData = () => iota(len).map!(i => choice([Elem(0), Elem(1)])).array;
-            break;
-        case "RandomBigBinary":
-            getData = () => iota(len).map!(i => choice([Elem.max / 2, Elem.max])).array;
-            break;
-        case "OrganPipe":
-            getData = () => iota((len / 2).to!Elem).chain((len & 1) ? [(1 + len / 2).to!Elem] : [], iota((len / 2).to!Elem).retro).array;
-            break;
-        case "MinAtBack":
-            getData = () => iota(len).map!(i => i.to!Elem).cycle.dropOne.takeExactly(len).array;
-            break;
-        case "MaxAtFront":
-            getData = () => iota(len).map!(i => i.to!Elem).cycle.drop(len - 1).takeExactly(len).array;
-            break;
-        case "FlatSpike":
-            getData = () => chain([Elem(10000)], repeat(0, len - 1)).array;
-            break;
-        case "RampSpike":
-            getData = () => chain([(len * 10).to!Elem], iota((len - 1).to!Elem)).array;
-            break;
-        default:
-            throw new Exception("did not recognise experiment \"" ~ experiment ~ "\"");
-    }
-
-    foreach (i; 0 .. NR) {
-        auto data = getData();
-        auto orig = data.dup;
-        //GC.disable;
-        sw.start();
-        data = binnedCountingSort(data);
-        sw.stop();
-        //GC.enable;
-        //GC.collect();
-        import std.conv : text;
-        enforce(data.isSorted, data.text);
-        enforce(data == orig.phobosSort);
-    }
-
-    writeln("binned sort:                          ", sw.peek);
-
-    sw.reset();
-    foreach (i; 0 .. NR) {
-        auto data = getData();
-        sw.start();
-        data = phobosSort(data);
-        sw.stop();
-    }
-
-    writeln("std.algorithm.sort:                   ", sw.peek);
-
-    sw.reset();
-    foreach (i; 0 .. NR) {
-        auto data = getData();
-        auto orig = data.dup;
-        sw.start();
-        data = cppSort(data);
-        sw.stop();
-        enforce(data.isSorted && data == orig.phobosSort);
-    }
-
-    writeln("std::sort:                            ", sw.peek);
-
-    sw.reset();
-    foreach (i; 0 .. NR) {
-        auto data = getData();
-        auto orig = data.dup;
-        sw.start();
-        data = kxSort(data);
-        sw.stop();
-        enforce(data.isSorted && data == orig.phobosSort);
-    }
-
-    writeln("kx::radix_sort:                       ", sw.peek);
-
-    sw.reset();
-    foreach (i; 0 .. NR) {
-        auto data = getData();
-        auto orig = data.dup;
-        sw.start();
-        data = boostSort(data);
-        sw.stop();
-        enforce(data.isSorted && data == orig.phobosSort);
-    }
-
-    writeln("boost::sort::spreadsort::integer_sort ", sw.peek);
-}
-
-enum NR = 10;
