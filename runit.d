@@ -41,7 +41,7 @@ void main(string[] args) {
     immutable len = args[2].to!size_t;
 
     alias Elem = long;
-    enum NR = 1000000;
+    enum NR = 500;
 
     auto getData = dataGenerator!Elem(pattern, len);
 

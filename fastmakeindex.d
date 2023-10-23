@@ -25,6 +25,7 @@ if (isRandomAccessRange!Range && !isInfinite!Range &&
 
     Unqual!Elem min = r[0], max = r[0];
     bool inOrder = true;
+    bool inReverseOrder = true;
     foreach (i; 1 .. r.length)
     {
         const el = r[i];
@@ -33,6 +34,7 @@ if (isRandomAccessRange!Range && !isInfinite!Range &&
         if (el > max)
             max = el;
         inOrder = inOrder & (r[i - 1] <= el);
+        inReverseOrder = inReverseOrder & (r[i - 1] >= el);
     }
     if (inOrder)
     {
@@ -42,11 +44,19 @@ if (isRandomAccessRange!Range && !isInfinite!Range &&
             index[i] = cast(ElementType!RangeIndex) i;
         return;
     }
+    if (inReverseOrder)
+    {
+        // Use size_t as loop index to avoid overflow on ++i,
+        // e.g. when squeezing 256 elements into a ubyte index.
+        foreach (size_t i; 0 .. r.length)
+            index[i] = cast(ElementType!RangeIndex) (r.length - i - 1);
+        return;
+    }
 
     // magic number that seems to work well. Results are mostly not that
     // sensitive to it though
     // 16 seems sensible idk
-    enum targetNumPerBin = 10;
+    enum targetNumPerBin = 6;
     // Divisor for the keys to decide which bin they go in, based on targetNumPerBin
     immutable k = targetNumPerBin * double(Unsigned!Elem(max) - min) / r.length;
 
@@ -65,14 +75,12 @@ private enum Scaling {
     none
 }
 
-pragma(inline, false)
 private void makeIndexLessIntegersOnlyImpl
     (Scaling scaling, SwapStrategy ss, Range, RangeIndex)
     (scope Range r, scope RangeIndex index, immutable ElementType!Range minVal,
     immutable ElementType!Range maxVal, immutable double k)
 in (k > 0)
 body {
-    pragma(LDC_never_inline);
     import core.stdc.stdlib : calloc, free;
     import std.math : lround, log2;
     import std.traits : Unsigned;
@@ -113,21 +121,38 @@ body {
             " shift: ", shift, " nBins: ", nBins, " nPerBin: ", double(r.length) / nBins);
     }}
 
-    pragma(inline, true)
+    //pragma(inline, true)
     static IndexElem[] tmpMem(size_t nBins) @trusted
     {
-        auto p = calloc(nBins, IndexElem.sizeof);
-        //import std.stdio;
-        //stderr.writeln("allocated: ", nBins * IndexElem.sizeof);
-        if (p is null)
+        version (StaticBuffer)
         {
-            assert(0, "memory allocation failed");
+            static IndexElem[] buff;
+            if (buff.length >= nBins) {
+                buff[0 .. nBins] = 0;
+                return buff[0 .. nBins];
+            }
+            buff.length = nBins;
+            buff[] = 0;
+            return buff;
         }
-        return (cast(IndexElem*) p)[0 .. nBins];
+        else
+        {
+            auto p = calloc(nBins, IndexElem.sizeof);
+            //import std.stdio;
+            //stderr.writeln("allocated: ", nBins * IndexElem.sizeof);
+            if (p is null)
+            {
+                assert(0, "memory allocation failed");
+            }
+            return (cast(IndexElem*) p)[0 .. nBins];
+        }
     }
     scope counts = tmpMem(nBins);
-    scope (exit)
-        (() @trusted { free(counts.ptr); })();
+    version (StaticBuffer) {} else
+    {
+        scope (exit)
+            (() @trusted { free(counts.ptr); })();
+    }
 
     // count how many will go in each bin
     foreach (el; r.save)
