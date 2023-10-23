@@ -49,11 +49,19 @@ void main(string[] args) {
 
     runBench!(size_t[], getData, (orig, res) => enforce(orig.indexed(res).equal(orig.array.sort), orig.to!string), NR)(
         [
-            "new" : (Elem[] i) {
+            "new stable" : (Elem[] i) {
+                makeIndexLessIntegersOnly!(SwapStrategy.stable)(i, index);
+                return index;
+            },
+            "old stable" : (Elem[] i) {
+                makeIndex!("a < b", SwapStrategy.stable)(i, index);
+                return index;
+            },
+            "new unstable" : (Elem[] i) {
                 makeIndexLessIntegersOnly!(SwapStrategy.unstable)(i, index);
                 return index;
             },
-            "old" : (Elem[] i) {
+            "old unstable" : (Elem[] i) {
                 makeIndex!("a < b", SwapStrategy.unstable)(i, index);
                 return index;
             }

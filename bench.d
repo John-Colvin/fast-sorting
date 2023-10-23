@@ -5,15 +5,18 @@ template runBench(Output, alias getData, alias checker, int NR = 10) {
     alias FT = Output delegate(Input);
     pragma(inline, false)
     void runBench(FT[string] contenders) {
-        import std.array : array;
+        import std.algorithm : sort;
+        import std.array : array, byPair;
         import std.datetime.stopwatch : StopWatch;
         import std.stdio : writeln;
         import std.range : repeat;
 
-        foreach (name, run; contenders) {
+        foreach (name, run; contenders.byPair.array.sort!((a, b) => a.key < b.key)) {
             StopWatch sw;
             foreach (i; 0 .. NR) {
                 auto data = getData();
+                //import std.stdio;
+                //writeln(data);
                 auto orig = data.array;
                 //GC.disable;
                 sw.start();

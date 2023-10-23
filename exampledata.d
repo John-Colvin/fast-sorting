@@ -1,14 +1,14 @@
 module exampledata;
 
 auto dataGenerator(Elem)(string pattern, size_t len) {
-    import std.algorithm : map, joiner;
+    import std.algorithm : map, joiner, sum, cumulativeFold;
     import std.array : array;
     import std.conv : to;
-    import std.random : uniform, choice;
-    import std.range : iota, retro, cycle, drop, dropOne, takeExactly, chain, repeat;
+    import std.random : uniform, uniform01, choice;
+    import std.range : iota, retro, cycle, drop, dropOne, takeExactly, chain, repeat, only;
     switch(pattern) {
         case "Uniform":
-            return () => iota(len).map!(i => uniform(Elem(0), len.to!Elem / 100)).array;
+            return () => iota(len).map!(i => uniform(Elem(0), 1000.to!Elem)).array;
             break;
         case "UniformEqualRange":
             return () => iota(len).map!(i => uniform(Elem(0), len.to!Elem)).array;
@@ -20,7 +20,7 @@ auto dataGenerator(Elem)(string pattern, size_t len) {
             return () => iota(len).map!(i => uniform(Elem(0), len.to!Elem / 100)^^2).array;
             break;
         case "SmoothPow4":
-            return () => iota(len).map!(i => uniform(Elem(0), ((len.to!double / 10_000)^^4).to!Elem)).array;
+            return () => iota(len).map!(i => (uniform(0.0, 20.0)^^4).to!Elem).array;
             break;
         case "Forward":
             return () => iota(len).map!(i => i.to!Elem).array;
@@ -63,6 +63,14 @@ auto dataGenerator(Elem)(string pattern, size_t len) {
             return () => iota(10)
                             .map!((i) { auto base = uniform(Elem(0), Elem(len)); return iota(base, base + Elem(len / 10)).retro; })
                             .joiner.array;
+        case "PdfSpikes":
+            return () => iota(len).map!(i => choice(only(10, 80)) * iota(100).map!(_ => uniform01()).sum.to!Elem).array;
+        case "PdfSpikeClusters":
+            return () => iota(len).cumulativeFold!((a, b) {
+                const sample = uniform01();
+                return a ? (sample > 0.05) : (sample > 0.95);
+            })(false)
+                .map!(i => only(10, 80)[i] * iota(100).map!(_ => uniform01()).sum.to!Elem).array;
         default:
             throw new Exception("did not recognise data pattern name \"" ~ pattern ~ "\"");
     }

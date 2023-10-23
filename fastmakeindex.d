@@ -4,6 +4,24 @@ import std.algorithm;
 import std.range;
 import std.traits;
 
+/+
+problems:
+ *   low-occupancy areas
+ *   unpredictable jumping around
+
+if you could get the list to be more sorted at a macro level,
+it would be much more predictable. One trick is to sort chunks
+based on their sums, which will take advantage of any larger
+scale structure & give a situation where the jumping around
+is greatly reduced. However, if the data is truly jumbled up
+this won't help much at all, e.g. a uniform choice of [0,10000]
+will still be almost as totally free from structure after this
+
+if you could know the number of unique values, or really the
+degree of variety in the pdf, then you could maybe know how
+to optimally bin?
++/
+
 void makeIndexLessIntegersOnly(
     SwapStrategy ss,
     Range,
@@ -170,12 +188,22 @@ body {
     // turn that in to a cumulative count starting at 0
     // the top count is lost from counts but that's implicit from the length of the input
     IndexElem total = 0;
+    //size_t zeroCounts;
     foreach (ref count; counts)
     {
+        //zeroCounts += (count == 0);
         auto oldCount = count;
         count = total;
         total += oldCount;
     }
+    //import std.stdio;
+    //writeln(zeroCounts);
+    //if (zeroCounts * 5 > counts.length)
+    //{
+    //    // too may zeros 
+    //    index.sort!((a, b) => r[a] < r[b], ss)();
+    //    return;
+    //}
 
     // put everything in its place based on the counts.
     {
