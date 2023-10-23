@@ -1,5 +1,7 @@
 # Counting go brrrrr
 
+DANGER!! KNOWN BUGS!!!
+
 `fastsort.d` has the real work in it
 
 `build.sh` builds it
