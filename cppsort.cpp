@@ -3,43 +3,24 @@
 #include "kxsort.h"
 #include <boost/sort/spreadsort/integer_sort.hpp>
 
-struct Slice32 {
-    size_t length;
-    int32_t *ptr;
-};
+#define Slice(N) struct Slice##N { size_t length; int##N##_t *ptr; };
 
-struct Slice64 {
-    size_t length;
-    int64_t *ptr;
-};
+Slice(16)
+Slice(32)
+Slice(64)
 
-extern "C" Slice32 cppSortImpl32(Slice32 r) {
-    std::sort(r.ptr, r.ptr + r.length);
-    return r;
+#define sort(theSort, name, N) \
+extern "C" Slice##N name##SortImpl##N(Slice##N r) { \
+    theSort(r.ptr, r.ptr + r.length);  \
+    return r; \
 }
 
-extern "C" Slice32 kxSortImpl32(Slice32 r) {
-    kx::radix_sort(r.ptr, r.ptr + r.length);
-    return r;
-}
-
-extern "C" Slice32 boostSortImpl32(Slice32 r) {
-    boost::sort::spreadsort::integer_sort(r.ptr, r.ptr + r.length);
-    return r;
-}
-
-extern "C" Slice64 cppSortImpl64(Slice64 r) {
-    std::sort(r.ptr, r.ptr + r.length);
-    return r;
-}
-
-extern "C" Slice64 kxSortImpl64(Slice64 r) {
-    kx::radix_sort(r.ptr, r.ptr + r.length);
-    return r;
-}
-
-extern "C" Slice64 boostSortImpl64(Slice64 r) {
-    boost::sort::spreadsort::integer_sort(r.ptr, r.ptr + r.length);
-    return r;
-}
-
+sort(std::sort, cpp, 16)
+sort(std::sort, cpp, 32)
+sort(std::sort, cpp, 64)
+sort(kx::radix_sort, kx, 16)
+sort(kx::radix_sort, kx, 32)
+sort(kx::radix_sort, kx, 64)
+sort(boost::sort::spreadsort::integer_sort, boost, 16)
+sort(boost::sort::spreadsort::integer_sort, boost, 32)
+sort(boost::sort::spreadsort::integer_sort, boost, 64)

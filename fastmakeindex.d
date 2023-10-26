@@ -183,6 +183,7 @@ body {
         import std.algorithm : fold, min, max;
         import std.stdio : stderr;
         stderr.writeln("counts min: ", fold!min(counts), " counts max: ", fold!max(counts));
+        stderr.writeln(counts);
     }}
 
     // turn that in to a cumulative count starting at 0
