@@ -11,7 +11,7 @@ void main(string[] args) {
     immutable len = args[2].to!size_t;
     immutable NR = args[3].to!size_t;
 
-    alias Elem = short;
+    alias Elem = long;
 
     auto getData = dataGenerator!Elem(pattern, len);
 

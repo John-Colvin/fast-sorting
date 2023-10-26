@@ -5,6 +5,7 @@
 
 #define Slice(N) struct Slice##N { size_t length; int##N##_t *ptr; };
 
+Slice(8)
 Slice(16)
 Slice(32)
 Slice(64)
@@ -15,12 +16,15 @@ extern "C" Slice##N name##SortImpl##N(Slice##N r) { \
     return r; \
 }
 
+sort(std::sort, cpp, 8)
 sort(std::sort, cpp, 16)
 sort(std::sort, cpp, 32)
 sort(std::sort, cpp, 64)
+sort(kx::radix_sort, kx, 8)
 sort(kx::radix_sort, kx, 16)
 sort(kx::radix_sort, kx, 32)
 sort(kx::radix_sort, kx, 64)
+sort(boost::sort::spreadsort::integer_sort, boost, 8)
 sort(boost::sort::spreadsort::integer_sort, boost, 16)
 sort(boost::sort::spreadsort::integer_sort, boost, 32)
 sort(boost::sort::spreadsort::integer_sort, boost, 64)

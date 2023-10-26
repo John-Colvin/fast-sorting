@@ -137,7 +137,7 @@ body {
         pragma(inline, true)
         IndexElem b(Elem x)
         {
-            return (cast(IndexElem) (x - minVal)) >> shift;
+            return cast(IndexElem) (cast(Unsigned!Elem) (x - minVal) >> shift);
         }
     }
     else static assert(0);
@@ -236,8 +236,8 @@ body {
 
 import phobossort : sort;
 
-alias customSort = sort;
-//alias customSort = sortIfNecessary;
+//alias customSort = sort;
+alias customSort = sortIfNecessary;
 //alias customSort = sortIfNecessary2;
 
 pragma(inline, true)

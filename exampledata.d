@@ -4,7 +4,7 @@ auto dataGenerator(Elem)(string pattern, size_t len)
 out(r; r().length == len)
 do
 {
-    import std.algorithm : map, joiner, sum, cumulativeFold;
+    import std.algorithm : map, joiner, sum, cumulativeFold, min;
     import std.array : array;
     import std.conv : to;
     import std.random : uniform, uniform01, choice;
@@ -13,10 +13,10 @@ do
 
     switch(pattern) {
         case "Uniform":
-            return () => iota(len).map!(i => uniform(0, 1000).to!Elem).array;
+            return () => iota(len).map!(i => uniform(0, min(1000, Elem.max)).to!Elem).array;
             break;
         case "UniformEqualRange":
-            return () => iota(len).map!(i => uniform(0, len).to!Elem).array;
+            return () => iota(len).map!(i => uniform(0, min(len, Elem.max)).to!Elem).array;
             break;
         case "UniformFullRange":
             return () => iota(len).map!(i => uniform(Elem.min, Elem.max)).array;
